@@ -5,17 +5,21 @@
 # E-mail     : shell_chen@yeah.net
 # Version    : 1.0.1
 
+"""
+k-v缓存模块
+1, 可久化保存
+2, 可设置超时时间
+3, 可设置持久化保存频率
+4, 加锁: 保证多线程能安全读写同一资源
 
-#this
-#
-#
-#
+"""
 
 
 import os
 import json
 import time
 import threading
+import logging
 
 class KvCache(object):
     def __init__(self, cache=None, save_timeout = 2*60, timeout=2*60*60):
@@ -31,10 +35,10 @@ class KvCache(object):
 
         self.mutex = threading.Lock()
 
-        self.__loads()
+        self._loads()
 
 
-    def __loads(self):
+    def _loads(self):
         if not self.cache_file:
             return
 
@@ -42,20 +46,21 @@ class KvCache(object):
         if cache_dir and not os.path.isdir(cache_dir):
             os.makedirs(cache_dir)
 
-        if  not os.path.isfile(self.cache_file):
+        if not os.path.isfile(self.cache_file):
+            logging.error("cache file: %s is not file"%self.cache_file)
             return
 
         with open(self.cache_file, "r") as fp:
             buf = fp.read()
-            tmp = json.loads(buf)
             try:
+                tmp = json.loads(buf)
                 self.caches = tmp.get(self.caches_key)
                 self.save_time = tmp.get(self.last_save_time_key)
-            except:
-                return
+            except ValueError, why:
+                logging.error("loads json error:%s"%why)
 
 
-    def __dumps(self):
+    def _dumps(self):
         if not self.cache_file:
             return
 
@@ -66,7 +71,7 @@ class KvCache(object):
             tmp[self.last_save_time_key] = self.save_time
             fp.write(json.dumps(tmp))
 
-    def __saves(self):
+    def _saves(self):
         now = time.time()
 
         if self.save_timeout < 0:
@@ -76,9 +81,9 @@ class KvCache(object):
             return
 
         self.save_time = now
-        self.__dumps()
+        self._dumps()
 
-    def __check_timeout(self):
+    def _check_timeout(self):
 
         if not self.caches:
             return
@@ -110,7 +115,7 @@ class KvCache(object):
         if not self.caches:
             return
 
-        self.__check_timeout()
+        self._check_timeout()
 
         item = self.caches.get(k)
         if not item:
@@ -127,14 +132,14 @@ class KvCache(object):
 
 
     def set_nolock(self, k, v):
-        self.__check_timeout()
+        self._check_timeout()
         now = time.time()
 
         self.caches[k] = (v, now)
-        self.__saves()
+        self._saves()
 
 
-def testkbcache():
+def testkvcache():
     cache = "testlog"
     KV = KvCache(cache, 1, 2)
 
@@ -152,7 +157,7 @@ def testkbcache():
     print KV.caches
 
 if __name__ == "__main__":
-    testkbcache()
+    testkvcache()
 
 
 

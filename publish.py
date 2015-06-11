@@ -35,20 +35,18 @@
 
 import os
 import json
-import arg
+# import arg
+import logging
+import time
 
-class Publish(object):
-    indexfile = "index.json"
-    classflie = "class.json"
-    tagsfile = "tags.json"
-
-    def __init__(self, filename, title, tags, cls, path):
-        self.id = self.getid()
-        self.filename = filename
-        self.title = title
-        self.tags = tags
-        self.cls = cls
+class BlogData(object):
+    def __init__(self, path):
         self.path = path
+
+        self.indexfile = os.path.join(path, "index.json")
+        self.classflie = os.path.join(path, "class.json")
+        self.tagsfile = os.path.join(path, "tags.json")
+
         self.loads()
 
     def getid(self):
@@ -65,28 +63,102 @@ class Publish(object):
         self._dumps(self._TAGS, self.tagsfile)
 
     def _loads(self, filename):
-        tmp = [ ]
-        filedir = os.path.join(self.path, filename)
-        if os.path.isfile(filedir):
+        tmp = None
+        if os.path.isfile(filename):
             try:
                 tmp = json.load(open(filename))
-                print "load pickle:%s" %filename
             except:
-                tmp = [ ]
+                tmp = None
                 print "load pickle:%s error!" %filename
         return tmp
 
     def _dumps(self, obj, filename):
-        json.dump(obj, open(filename, "w"), sort_keys=True, indent=4)
+        d = json.dumps(obj, sort_keys=True, indent=4)
+        with open(filename,"w") as fp:
+            fp.write(d)
+
+
+    def add(self,title, context, tags, cls, public=0):
+        Id = self.getid()
+        mtime = ctime = time.time()
+        info = [title, tags, cls, ctime, mtime, public]
+
+        self.setinfo(Id, context,info)
+
+    def update(self, Id, title, context, tags, cls, public):
+        mtime = time.time()
+        info = self._INDEX.get(Id)
+        if info is None:
+            return
+
+        ctime = info[3]
+        self.setinfo(Id, context, [title, tags, cls, ctime, mtime, public])
+
+    def setinfo(self, Id, context, info):
+
+        dirpath = os.path.join(self.path, str(Id))
+        if os.path.isdir(dirpath):
+            logging.error("%s dupile"%dirpath)
+            return
+
+        if not self.write(Id, context):
+            return
+
+        self.tagsadd(info[1])
+        self.clsadd(Id, info[2])
+        self.indexadd(Id,info)
+        self.dumps()
+
+    def write(self, Id, context):
+        dirpath = os.path.join(self.path, str(Id))
+
+        if not os.path.isdir(dirpath):
+            try:
+                os.mkdir(dirpath)
+            except:
+                logging.exception("mkdir %s fail"%dirpath)
+                return False
+
+        fpdir = os.path.join(dirpath, "index.html")
+        with open(fpdir, "w") as fp:
+            fp.write(context)
+
+        fpdir = os.path.join(dirpath, "index.md")
+        with open(fpdir, "w") as fp:
+            fp.write(context)
+
+        return True
+
+    def tagsadd(self, tags):
+        if self._TAGS is None:
+            self._TAGS = [ ]
+
+        for t in tags:
+            if t not in self._TAGS:
+                self._TAGS.append(t)
+
+    def clsadd(self, Id, cls):
+        if not self._CLASS:
+            self._CLASS = { }
+
+        c = self._CLASS.get(cls)
+        if not c:
+            self._CLASS[cls] = [Id]
+        else:
+            c.append(Id)
+
+    def indexadd(self, Id, info):
+        if not self._INDEX:
+            self._INDEX = { }
+        self._INDEX[Id] = info
 
 
 
-
-
-def start():
-    args = arg.args
+# def test():
+#     args = arg.args
 
 if __name__ == "__main__":
-    start()
+    bd = BlogData("/home/cxx/shell/blog/store")
+    bd.add('bbcc', "bbbbbbbccc",["bbb"],"bbb")
 
 
