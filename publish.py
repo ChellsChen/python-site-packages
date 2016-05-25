@@ -49,6 +49,9 @@ class Publish(object):
         self.tags = tags
         self.cls = cls
         self.path = path
+        self.publishtime = time.time()
+
+        self.info = [title, tags, cls, self.publishtime]
         self.loads()
 
     def getid(self):
@@ -65,19 +68,31 @@ class Publish(object):
         self._dumps(self._TAGS, self.tagsfile)
 
     def _loads(self, filename):
-        tmp = [ ]
+        tmp = { }
         filedir = os.path.join(self.path, filename)
         if os.path.isfile(filedir):
             try:
                 tmp = json.load(open(filename))
                 print "load pickle:%s" %filename
             except:
-                tmp = [ ]
+                tmp = { }
                 print "load pickle:%s error!" %filename
         return tmp
 
     def _dumps(self, obj, filename):
         json.dump(obj, open(filename, "w"), sort_keys=True, indent=4)
+
+    def getkeys(self, obj):
+
+    def addcls(self):
+
+
+
+
+
+    def setjson(self):
+
+
 
 
 
